@@ -31,6 +31,7 @@ class TestBoxScores(unittest.TestCase):
             "TOV",
             "PF",
             "PTS",
+            "GmSc",
             "+/-",
         ]
         self.assertListEqual(list(df.columns), expected_columns)

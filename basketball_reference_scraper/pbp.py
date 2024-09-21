@@ -6,10 +6,10 @@ from requests import get
 
 try:
     from request_utils import get_wrapper
-    from utils import get_game_suffix
+    from utils import format_html, get_game_suffix
 except:
     from basketball_reference_scraper.request_utils import get_wrapper
-    from basketball_reference_scraper.utils import get_game_suffix
+    from basketball_reference_scraper.utils import format_html, get_game_suffix
 
 
 def get_pbp_helper(suffix):
@@ -18,7 +18,7 @@ def get_pbp_helper(suffix):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table", attrs={"id": "pbp"})
-        return pd.read_html(str(table))[0]
+        return pd.read_html(format_html(table))[0]
     else:
         raise ConnectionError("Request to basketball reference failed")
 

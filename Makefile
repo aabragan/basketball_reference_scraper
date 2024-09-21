@@ -13,6 +13,9 @@ format: ## Initialize the project and install packages
 example: ## Execute example application via Poetry
 	@poetry run python example.py
 
+tests: ## Execute unit tests
+	@TESTING=1 poetry run python -m unittest discover test
+
 update-deps: ## Update the package dependencies via Poetry.
 	@poetry update
 

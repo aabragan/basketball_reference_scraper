@@ -1,4 +1,5 @@
 import unicodedata
+from io import StringIO
 
 import pandas as pd
 import unidecode
@@ -144,7 +145,7 @@ def remove_accents(name, team, season_end_year):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table")
-        team_df = pd.read_html(str(table))[0]
+        team_df = pd.read_html(format_html(table))[0]
         max_matches = 0
         for p in team_df["Player"]:
             matches = sum(l1 == l2 for l1, l2 in zip(p, name))
@@ -152,3 +153,7 @@ def remove_accents(name, team, season_end_year):
                 max_matches = matches
                 best_match = p
     return best_match
+
+
+def format_html(html):
+    return StringIO(str(html))

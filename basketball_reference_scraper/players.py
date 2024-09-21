@@ -5,12 +5,13 @@ from requests import get
 try:
     from lookup import lookup
     from request_utils import get_selenium_wrapper, get_wrapper
-    from utils import get_player_suffix
+    from utils import format_html, get_player_suffix
 except:
     from basketball_reference_scraper.lookup import lookup
     from basketball_reference_scraper.request_utils import (
         get_selenium_wrapper, get_wrapper)
-    from basketball_reference_scraper.utils import get_player_suffix
+    from basketball_reference_scraper.utils import (format_html,
+                                                    get_player_suffix)
 
 
 def get_stats(
@@ -40,7 +41,7 @@ def get_stats(
         )
     if table is None:
         return pd.DataFrame()
-    df = pd.read_html(table)[0]
+    df = pd.read_html(format_html(table))[0]
     df.rename(
         columns={
             "Season": "SEASON",
@@ -82,7 +83,7 @@ def get_game_logs(_name, year, playoffs=False, ask_matches=True):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table", {"id": selector})
-        df = pd.read_html(str(table))[0]
+        df = pd.read_html(format_html(table))[0]
         df.rename(
             columns={
                 "Date": "DATE",
@@ -126,7 +127,7 @@ def get_player_splits(_name, season_end_year, stat_type="PER_GAME", ask_matches=
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table")
         if table:
-            df = pd.read_html(str(table))[0]
+            df = pd.read_html(format_html(table))[0]
             for i in range(1, len(df["Unnamed: 0_level_0", "Split"])):
                 if isinstance(df["Unnamed: 0_level_0", "Split"][i], float):
                     df["Unnamed: 0_level_0", "Split"][i] = df[

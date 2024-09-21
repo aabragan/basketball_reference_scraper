@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import Dict
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -9,11 +10,12 @@ from unidecode import unidecode
 try:
     from players import get_stats
     from request_utils import get_wrapper
-    from utils import get_game_suffix, remove_accents
+    from utils import format_html, get_game_suffix, remove_accents
 except:
     from basketball_reference_scraper.players import get_stats
     from basketball_reference_scraper.request_utils import get_wrapper
-    from basketball_reference_scraper.utils import (get_game_suffix,
+    from basketball_reference_scraper.utils import (format_html,
+                                                    get_game_suffix,
                                                     remove_accents)
 
 
@@ -35,7 +37,9 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
         raise ValueError('stat_type must be "BASIC" or "ADVANCED"')
     date = pd.to_datetime(date)
     suffix = get_game_suffix(date, team1, team2)
-    r = get_wrapper(f"https://www.basketball-reference.com/{suffix}")
+    url = f"https://www.basketball-reference.com/{suffix}"
+    r = get_wrapper(url)
+
     if r.status_code == 200:
         dfs = []
         if period == "GAME":
@@ -51,7 +55,7 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
         soup = BeautifulSoup(r.content, "html.parser")
         for selector in selectors:
             table = soup.find("table", {"id": selector})
-            raw_df = pd.read_html(str(table))[0]
+            raw_df = pd.read_html(format_html(table))[0]
             df = _process_box(raw_df)
             if team1 in selector:
                 df["PLAYER"] = df["PLAYER"].apply(
@@ -64,7 +68,7 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
             dfs.append(df)
         return {team1: dfs[0], team2: dfs[1]}
     else:
-        raise ConnectionError("Request to basketball reference failed")
+        raise ConnectionError(f"Request to basketball reference failed for {url}")
 
 
 def _process_box(df):
@@ -108,7 +112,7 @@ def get_all_star_box_score(year: int):
             map(lambda el: el.text, soup.select("div.section_heading > h2")[1:3])
         )
         for table in soup.find_all("table")[1:3]:
-            raw_df = pd.read_html(str(table))[0]
+            raw_df = pd.read_html(format_html(table))[0]
             df = _process_box(raw_df)
             # drop team totals row (always last), totals row
             totals_index = df[df["MP"] == "Totals"].index[0]
@@ -116,7 +120,7 @@ def get_all_star_box_score(year: int):
             df = df.drop(df.tail(1).index).reset_index().drop("index", axis=1)
             df["PLAYER"] = df["PLAYER"].apply(lambda x: unidecode(x))
             dfs.append(df)
-        res = {team_names[0]: dfs[0], team_names[1]: dfs[1]}
+        res: Dict[str, pd.DataFrame] = {team_names[0]: dfs[0], team_names[1]: dfs[1]}
         # add DNPs for all-star roster purposes
         # the all-star team each dnp is on is in parens. for some reasons this captures parens
         dnp_allstar_teams = re.findall(
@@ -138,7 +142,9 @@ def get_all_star_box_score(year: int):
                 )
                 new_row = {"PLAYER": dnp, "TEAM": team}
                 # set players allstar team from regexp
-                res[as_team] = res[as_team].append(new_row, ignore_index=True)
+                df: pd.DataFrame = res[as_team]
+                new_df: pd.DataFrame = pd.DataFrame([new_row])
+                res[as_team] = pd.concat([df, new_df])
         return res
     else:
         raise ConnectionError("Request to basketball reference failed")

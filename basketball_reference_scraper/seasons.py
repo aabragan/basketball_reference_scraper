@@ -5,8 +5,10 @@ from bs4 import BeautifulSoup
 
 try:
     from request_utils import get_wrapper
+    from utils import format_html
 except:
     from basketball_reference_scraper.request_utils import get_wrapper
+    from basketball_reference_scraper.utils import format_html
 
 
 def get_schedule(season, playoffs=False):
@@ -43,19 +45,21 @@ def get_schedule(season, playoffs=False):
             soup = BeautifulSoup(r.content, "html.parser")
             table = soup.find("table", attrs={"id": "schedule"})
             if table:
-                month_df = pd.read_html(str(table))[0]
+                month_df = pd.read_html(format_html(table))[0]
                 df = pd.concat([df, month_df])
 
     df = df.reset_index()
 
-    cols_to_remove = [i for i in df.columns if "Unnamed" in i]
+    cols_to_remove = [i for i in df.columns if "Unnamed: 6" in i]
     cols_to_remove += [i for i in df.columns if "Notes" in i]
     cols_to_remove += [i for i in df.columns if "Start" in i]
     cols_to_remove += [i for i in df.columns if "Attend" in i]
     cols_to_remove += [i for i in df.columns if "Arena" in i]
     cols_to_remove += ["index"]
     df = df.drop(cols_to_remove, axis=1)
-    df.columns = ["DATE", "VISITOR", "VISITOR_PTS", "HOME", "HOME_PTS"]
+
+    df.columns = ["DATE", "VISITOR", "VISITOR_PTS", "HOME", "HOME_PTS", "OT?", "LOG"]
+    df["OT?"] = df["OT?"].fillna("N").apply(lambda x: "Y" if x == "OT" else "N")
 
     if season == 2020:
         df = df[df["DATE"] != "Playoffs"]
@@ -108,8 +112,8 @@ def get_standings(date=None):
             columns=["TEAM", "W", "L", "W/L%", "GB", "PW", "PL", "PS/G", "PA/G"]
         )
         if e_table and w_table:
-            e_df = pd.read_html(str(e_table))[0]
-            w_df = pd.read_html(str(w_table))[0]
+            e_df = pd.read_html(format_html(e_table))[0]
+            w_df = pd.read_html(format_html(w_table))[0]
             e_df.rename(columns={"Eastern Conference": "TEAM"}, inplace=True)
             w_df.rename(columns={"Western Conference": "TEAM"}, inplace=True)
         d["EASTERN_CONF"] = e_df

@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import List
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -49,28 +50,34 @@ def get_shot_chart(date, team1, team2):
         soup = BeautifulSoup(r.content, "html.parser")
         shot_chart1_div = soup.find("div", attrs={"id": f"shots-{team1}"})
         shot_chart2_div = soup.find("div", attrs={"id": f"shots-{team2}"})
-        df1 = pd.DataFrame()
+        # df1 = pd.DataFrame()
+        items1: List = []
         for div in shot_chart1_div.find_all("div"):
             if "style" not in div.attrs or "tip" not in div.attrs:
                 continue
             location = get_location(div.attrs["style"])
             description = get_description(div.attrs["tip"])
             shot_d = {**location, **description}
-            shot_df = pd.DataFrame.from_dict([shot_d])
-            df1 = df1.append(shot_df)
-        df1 = df1.reset_index()
-        df1 = df1.drop("index", axis=1)
-        df2 = pd.DataFrame()
+            # shot_df = pd.DataFrame.from_dict([shot_d])
+            items1.append(shot_d)
+
+        df1 = pd.DataFrame(items1)
+        #df1 = df1.drop("index", axis=1)
+
+        # df2 = pd.DataFrame()
+        items2: List = []
         for div in shot_chart2_div.find_all("div"):
             if "style" not in div.attrs or "tip" not in div.attrs:
                 continue
             location = get_location(div.attrs["style"])
             description = get_description(div.attrs["tip"])
             shot_d = {**location, **description}
-            shot_df = pd.DataFrame.from_dict([shot_d])
-            df2 = df2.append(shot_df)
-        df2 = df2.reset_index()
-        df2 = df2.drop("index", axis=1)
+            # shot_df = pd.DataFrame.from_dict([shot_d])
+            # df2 = df2.append(shot_df)
+            items2.append(shot_d)
+        df2 = pd.DataFrame(items2)
+        # df2 = df2.reset_index()
+        #df2 = df2.drop("index", axis=1)
 
         return {f"{team1}": df1, f"{team2}": df2}
     else:

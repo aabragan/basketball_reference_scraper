@@ -31,8 +31,10 @@ print(df)
 
 from basketball_reference_scraper.seasons import get_schedule, get_standings
 
-s = get_schedule(2018, playoffs=False)
+s = get_schedule(2024, playoffs=False)
 print(s)
+# s.to_excel("nba_schedule_2023-24.xlsx", index=False)
+# s.to_csv("nba_schedule_2023-24.csv", index=False)
 
 s = get_standings(date="2020-01-06")
 print(s)

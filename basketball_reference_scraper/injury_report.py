@@ -5,9 +5,11 @@ from requests import get
 try:
     from constants import TEAM_TO_TEAM_ABBR
     from request_utils import get_wrapper
+    from utils import format_html
 except:
     from basketball_reference_scraper.constants import TEAM_TO_TEAM_ABBR
     from basketball_reference_scraper.request_utils import get_wrapper
+    from basketball_reference_scraper.utils import format_html
 
 
 def get_injury_report():
@@ -15,7 +17,7 @@ def get_injury_report():
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table")
-        df = pd.read_html(str(table))[0]
+        df = pd.read_html(format_html(table))[0]
         df.rename(
             columns={
                 "Player": "PLAYER",
