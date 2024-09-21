@@ -72,7 +72,7 @@ class TestPlayers(unittest.TestCase):
             "PF",
             "PTS",
         ]
-        df = get_stats("Joe Johnson")
+        df = get_stats("Lebron James")
         self.assertCountEqual(list(df.columns), expected_columns_season)
 
         df = get_stats("LaMarcus Aldridge")
