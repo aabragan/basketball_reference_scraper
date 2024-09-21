@@ -16,6 +16,9 @@ example: ## Execute example application via Poetry
 tests: ## Execute unit tests
 	@TESTING=1 poetry run python -m unittest discover test
 
+build: ## Build Python package using Poetry
+	@poetry build
+
 update-deps: ## Update the package dependencies via Poetry.
 	@poetry update
 
