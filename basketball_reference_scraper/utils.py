@@ -69,7 +69,7 @@ def get_player_suffix(name):
     normalized_name = unidecode.unidecode(
         unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("utf-8")
     )
-    if normalized_name in name_route_mappings.keys:
+    if normalized_name in name_route_mappings.keys():
         return name_route_mappings[normalized_name]
     else:
         split_normalized_name = normalized_name.split(" ")
