@@ -8,7 +8,7 @@ The primary API used currently is for [stats.nba.com](https://stats.nba.com/), b
 
 Most of the scrapers use outdated methodologies of scraping from `'https://widgets.sports-reference.com/'`. This is outdated and Basketball Reference no longer acquires their data from there. Additionally, [Sports Reference recently instituted a rate limiter](https://www.sports-reference.com/bot-traffic.html) preventing users from making an excess of 20 requests/minute. This package abstracts the waiting logic to ensure you never hit this threshold.
 
- ## Prerequisites
+## Prerequisites
  To deploy this CDK Application you will need the following
  - [Python 3.12+](https://www.python.org/downloads/)
  - [Poetry](https://python-poetry.org/)
