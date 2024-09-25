@@ -60,13 +60,17 @@ def create_last_name_part_of_suffix(potential_last_names):
     This implementation dropped player lookup fail count from 306 to 35 to 0.
 """
 
+name_route_mappings = {
+    "Metta World Peace": "/players/a/artesro01.html",
+    "Clint Capela": "/players/c/capelca01.html"
+}
 
 def get_player_suffix(name):
     normalized_name = unidecode.unidecode(
         unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("utf-8")
     )
-    if normalized_name == "Metta World Peace":
-        suffix = "/players/a/artesro01.html"
+    if normalized_name in name_route_mappings.keys:
+        return name_route_mappings[normalized_name]
     else:
         split_normalized_name = normalized_name.split(" ")
         if len(split_normalized_name) < 2:
