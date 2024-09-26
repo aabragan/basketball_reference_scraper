@@ -62,8 +62,9 @@ def create_last_name_part_of_suffix(potential_last_names):
 
 name_route_mappings = {
     "Metta World Peace": "/players/a/artesro01.html",
-    "Clint Capela": "/players/c/capelca01.html"
+    "Clint Capela": "/players/c/capelca01.html",
 }
+
 
 def get_player_suffix(name):
     normalized_name = unidecode.unidecode(

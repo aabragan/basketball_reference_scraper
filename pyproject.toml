@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "basketball-reference-scraper"
-version = "3.0.1"
+version = "3.0.2"
 description = "A Python client for scraping stats and data from Basketball Reference"
 authors = [
     "Vishaal Agartha <vishaalagartha@gmail.com>",
@@ -35,6 +35,7 @@ soupsieve = "^2.6"
 Unidecode = "^1.3.8"
 selenium = "^4.24.0"
 openpyxl = "^3.1.5"
+html5lib = "^1.1"
 
 
 [tool.poetry.group.dev.dependencies]
