@@ -73,6 +73,15 @@ def get_stats(
 def get_game_logs(_name, year, playoffs=False, ask_matches=True):
     name = lookup(_name, ask_matches)
     suffix = get_player_suffix(name).replace(".html", "")
+    return _get_game_logs_internal(suffix=suffix, year=year, playoffs=playoffs)
+
+
+def get_game_logs_by_br_id(_id, year, playoffs=False):
+    suffix = f"players/{_id[0]}/{_id}"
+    return _get_game_logs_internal(suffix=suffix, year=year, playoffs=playoffs)
+
+
+def _get_game_logs_internal(suffix, year, playoffs=False):
     if playoffs:
         selector = "pgl_basic_playoffs"
         url = f"https://www.basketball-reference.com/{suffix}/gamelog-playoffs"
