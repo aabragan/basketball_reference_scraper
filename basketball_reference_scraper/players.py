@@ -92,6 +92,8 @@ def _get_game_logs_internal(suffix, year, playoffs=False):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table", {"id": selector})
+        if table is None:
+            return pd.DataFrame()
         df = pd.read_html(format_html(table))[0]
         df.rename(
             columns={
