@@ -11,7 +11,7 @@ format: ## Initialize the project and install packages
 	@poetry run isort .
 
 example: ## Execute example application via Poetry
-	@poetry run python example.py
+	@poetry run python examples.py
 
 tests: ## Execute unit tests
 	@TESTING=1 poetry run python -m unittest discover test
