@@ -37,7 +37,9 @@ def get_game_suffix(date, team1, team2):
 
 
 def create_last_name_part_of_suffix(potential_last_names):
-    last_names = "".join(potential_last_names)
+    last_names = (
+        "".join(potential_last_names).replace(".", "").replace("'", "").replace("-", "")
+    )
     if len(last_names) <= 5:
         return last_names[:].lower()
     else:
@@ -61,9 +63,30 @@ def create_last_name_part_of_suffix(potential_last_names):
 """
 
 name_route_mappings = {
-    "Metta World Peace": "/players/a/artesro01.html",
-    "Clint Capela": "/players/c/capelca01.html",
+    "Clint Capela": "c/capelca01",
+    "Nikola Vučević": "v/vucevni01",
+    "Maxi Kleber": "k/klebima01",
+    "Brandon Williams": "w/willibr03",
+    "KJ Martin": "m/martike04",
+    "Taze Moore": "m/mooreta02",
+    "Sasha Vezenkov": "v/vezenal01",
+    "Cedi Osman": "o/osmande01",
+    "Malik Williams": "w/willima11",
+    "Taylor Hendricks": "h/hendrita01",
+    "Johnny Davis": "d/davisjo06",
+    "Frank Ntilikina": "n/ntilila01",
+    "Mark Williams": "w/willima07",
+    "Jalen Williams": "w/willija06",
+    "Jaylin Williams": "w/willija07",
+    "Jalen Smith": "s/smithja04",
 }
+
+suffixes_to_remove = ["Jr.", "Sr.", "II", "III", "IV"]
+
+
+PLAYERS_PREFIX = "/players/"
+HTML_SUFFIX = ".html"
+FIRST_SUFFIX = "01"
 
 
 def get_player_suffix(name):
@@ -71,29 +94,36 @@ def get_player_suffix(name):
         unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("utf-8")
     )
     if normalized_name in name_route_mappings.keys():
-        return name_route_mappings[normalized_name]
+        return f"{PLAYERS_PREFIX}{name_route_mappings[normalized_name]}{HTML_SUFFIX}"
     else:
         split_normalized_name = normalized_name.split(" ")
         if len(split_normalized_name) < 2:
             return None
         initial = normalized_name.split(" ")[1][0].lower()
-        all_names = name.split(" ")
-        first_name_part = unidecode.unidecode(all_names[0][:2].lower())
+        all_names = normalized_name.split(" ")
+        first_name_part = unidecode.unidecode(
+            all_names[0].replace(".", "").replace("'", "")[:2].lower()
+        )
         first_name = all_names[0]
         other_names = all_names[1:]
+        had_suffix = False
+        for suffix_to_remove in suffixes_to_remove:
+            if suffix_to_remove in other_names:
+                had_suffix = True
+                other_names.remove(suffix_to_remove)
         other_names_search = other_names
         last_name_part = create_last_name_part_of_suffix(other_names)
-        suffix = (
-            "/players/" + initial + "/" + last_name_part + first_name_part + "01.html"
-        )
+    suffix = f"{PLAYERS_PREFIX}{initial}/{last_name_part}{first_name_part}{FIRST_SUFFIX}{HTML_SUFFIX}"
     player_r = get_wrapper(f"https://www.basketball-reference.com{suffix}")
     while player_r.status_code == 404:
         other_names_search.pop(0)
         last_name_part = create_last_name_part_of_suffix(other_names_search)
+        if len(last_name_part) < 1:
+            message = f"Anomaly found: Player name does not match page template: {normalized_name}"
+            print(message)
+            raise Exception(message)
         initial = last_name_part[0].lower()
-        suffix = (
-            "/players/" + initial + "/" + last_name_part + first_name_part + "01.html"
-        )
+        suffix = f"{PLAYERS_PREFIX}{initial}/{last_name_part}{first_name_part}{FIRST_SUFFIX}{HTML_SUFFIX}"
         player_r = get_wrapper(f"https://www.basketball-reference.com{suffix}")
     while player_r.status_code == 200:
         player_soup = BeautifulSoup(player_r.content, "html.parser")
@@ -111,27 +141,20 @@ def get_player_suffix(name):
             else:
                 page_names = unidecode.unidecode(page_name).lower().split(" ")
                 page_first_name = page_names[0]
-                if first_name.lower() == page_first_name.lower():
+                if first_name.lower() == page_first_name.lower() and not had_suffix:
                     return suffix
                 # if players have same first two letters of last name then just
                 # increment suffix
                 elif first_name.lower()[:2] == page_first_name.lower()[:2]:
                     player_number = int("".join(c for c in suffix if c.isdigit())) + 1
-                    if player_number < 10:
+                    if player_number < 15:
                         player_number = f"0{str(player_number)}"
-                    suffix = f"/players/{initial}/{last_name_part}{first_name_part}{player_number}.html"
+                    suffix = f"{PLAYERS_PREFIX}{initial}/{last_name_part}{first_name_part}{player_number}{HTML_SUFFIX}"
                 else:
                     other_names_search.pop(0)
                     last_name_part = create_last_name_part_of_suffix(other_names_search)
                     initial = last_name_part[0].lower()
-                    suffix = (
-                        "/players/"
-                        + initial
-                        + "/"
-                        + last_name_part
-                        + first_name_part
-                        + "01.html"
-                    )
+                    suffix = f"{PLAYERS_PREFIX}{initial}/{last_name_part}{first_name_part}{FIRST_SUFFIX}{HTML_SUFFIX}"
 
                 player_r = get_wrapper(f"https://www.basketball-reference.com{suffix}")
 
