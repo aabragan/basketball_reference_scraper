@@ -23,7 +23,18 @@ print(df)
 
 from basketball_reference_scraper.players import (get_game_logs,
                                                   get_game_logs_by_br_id,
-                                                  get_stats)
+                                                  get_stats,
+                                                  get_stats_by_br_id)
+
+s = get_stats_by_br_id(
+    "jamesle01", stat_type="PER_GAME", playoffs=False, career=False, season="2023-24"
+)
+print(s)
+
+
+s = get_stats_by_br_id("jamesle01", stat_type="PER_GAME", playoffs=False, career=False)
+print(s)
+
 
 s = get_stats("Stephen Curry", stat_type="PER_GAME", playoffs=False, career=False)
 print(s)
