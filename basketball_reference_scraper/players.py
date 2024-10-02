@@ -14,11 +14,33 @@ except:
                                                     get_player_suffix)
 
 
+def get_stats_by_br_id(
+    _id,
+    stat_type="PER_GAME",
+    playoffs=False,
+    career=False,
+    ask_matches=True,
+    season=None,
+):
+    suffix = f"/players/{_id[0]}/{_id}.html"
+    stats_df = _get_stats_internal(suffix, stat_type, playoffs, career, ask_matches)
+    if season:
+        return stats_df[stats_df["SEASON"] == season]
+    return stats_df
+
+
 def get_stats(
     _name, stat_type="PER_GAME", playoffs=False, career=False, ask_matches=True
 ):
     name = lookup(_name, ask_matches)
     suffix = get_player_suffix(name)
+    print(suffix)
+    return _get_stats_internal(suffix, stat_type, playoffs, career, ask_matches)
+
+
+def _get_stats_internal(
+    suffix, stat_type="PER_GAME", playoffs=False, career=False, ask_matches=True
+):
     if not suffix:
         return pd.DataFrame()
     stat_type = stat_type.lower()
