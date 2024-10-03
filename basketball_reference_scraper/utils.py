@@ -93,6 +93,9 @@ def get_player_suffix(name):
     normalized_name = unidecode.unidecode(
         unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("utf-8")
     )
+    # get rid of wierd suffix
+    normalized_name.replace("(TW)", "")
+
     if normalized_name in name_route_mappings.keys():
         return f"{PLAYERS_PREFIX}{name_route_mappings[normalized_name]}{HTML_SUFFIX}"
     else:
