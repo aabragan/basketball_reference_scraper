@@ -40,6 +40,7 @@ class TestTeams(unittest.TestCase):
             "NATIONALITY",
             "EXPERIENCE",
             "COLLEGE",
+            "PLAYER_ID",
         ]
 
         self.assertListEqual(list(df.columns), expected_columns)
@@ -57,6 +58,7 @@ class TestTeams(unittest.TestCase):
             "NATIONALITY",
             "EXPERIENCE",
             "COLLEGE",
+            "PLAYER_ID",
         ]
 
         self.assertListEqual(list(df.columns), expected_columns)
