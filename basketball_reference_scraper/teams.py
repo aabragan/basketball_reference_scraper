@@ -1,5 +1,6 @@
 import pandas as pd
 from bs4 import BeautifulSoup
+import re
 
 try:
     from constants import TEAM_SETS, TEAM_TO_TEAM_ABBR
@@ -21,6 +22,15 @@ def get_roster(team, season_end_year):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table", {"id": "roster"})
+        # get all player page urls
+        player_links = table.find_all("a", href=re.compile("/players/"))
+        player_url_lookup = {}
+        # build lookup of player ids
+        for item in player_links:
+            key = str(item.next)
+            value = str(item["href"]).replace(".html", "").replace("/players/", "")[2:]
+            player_url_lookup[key] = value
+
         df = pd.read_html(format_html(table))[0]
         df.columns = [
             "NUMBER",
@@ -33,6 +43,9 @@ def get_roster(team, season_end_year):
             "EXPERIENCE",
             "COLLEGE",
         ]
+        # map player id using player name
+        df["PLAYER_ID"] = df["PLAYER"].map(player_url_lookup)
+        
         # remove rows with no player name (this was the issue above)
         df = df[df["PLAYER"].notna()]
         df["PLAYER"] = df["PLAYER"].apply(

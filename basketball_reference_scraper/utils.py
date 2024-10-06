@@ -79,6 +79,8 @@ name_route_mappings = {
     "Jalen Williams": "w/willija06",
     "Jaylin Williams": "w/willija07",
     "Jalen Smith": "s/smithja04",
+    "Jahmir Young": "y/youngja05",
+    "N'Faly Dante": "n/nfalyda01",
 }
 
 suffixes_to_remove = ["Jr.", "Sr.", "II", "III", "IV"]
@@ -93,6 +95,9 @@ def get_player_suffix(name):
     normalized_name = unidecode.unidecode(
         unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode("utf-8")
     )
+    # get rid of wierd suffix
+    normalized_name = normalized_name.replace("(TW)", "").strip()
+
     if normalized_name in name_route_mappings.keys():
         return f"{PLAYERS_PREFIX}{name_route_mappings[normalized_name]}{HTML_SUFFIX}"
     else:

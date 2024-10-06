@@ -385,3 +385,4 @@ $RECYCLE.BIN/
 .vscode/
 env
 package_passwords.txt
+.idea/
