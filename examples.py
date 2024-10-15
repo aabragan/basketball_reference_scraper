@@ -6,13 +6,13 @@ from basketball_reference_scraper.teams import (get_opp_stats, get_roster,
 df = get_roster("GSW", 2019)
 print(df)
 
-s = get_team_stats("GSW", 2019, data_format="PER_GAME")
+s = get_team_stats("GSW", 2024, data_format="PER_GAME")
 print(s)
 
 s = get_opp_stats("GSW", 2019, data_format="PER_GAME")
 print(s)
 
-s = get_roster_stats("GSW", 2019, data_format="PER_GAME", playoffs=False)
+s = get_roster_stats("GSW", 2024, data_format="PER_GAME", playoffs=False)
 print(s)
 
 s = get_team_misc("GSW", 2019)
@@ -39,8 +39,8 @@ print(s)
 s = get_stats("Stephen Curry", stat_type="PER_GAME", playoffs=False, career=False)
 print(s)
 
-df = get_game_logs_by_br_id("jamesle01", 2024, playoffs=False)
-print(df.columns)
+df = get_game_logs_by_br_id("jamesle01", 2023, playoffs=False)
+print(df)
 
 df = get_game_logs("LeBron James", 2024, playoffs=False)
 print(df)
@@ -57,8 +57,8 @@ print(s)
 
 from basketball_reference_scraper.box_scores import get_box_scores
 
-s = get_box_scores("2020-01-13", "CHI", "BOS", period="GAME", stat_type="BASIC")
-print(s)
+s = get_box_scores("2023-10-24", "GSW", "PHO", period="GAME", stat_type="BASIC")
+print(s["PLAYER"])
 
 from basketball_reference_scraper.pbp import get_pbp
 
