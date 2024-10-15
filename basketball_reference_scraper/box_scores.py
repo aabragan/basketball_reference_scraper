@@ -57,13 +57,14 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
             table = soup.find("table", {"id": selector})
             raw_df = pd.read_html(format_html(table))[0]
             df = _process_box(raw_df)
+            end_year = date.year + 1 if date.month > 9 else date.year
             if team1 in selector:
                 df["PLAYER"] = df["PLAYER"].apply(
-                    lambda name: remove_accents(name, team1, date.year)
+                    lambda name: remove_accents(name, team1, end_year)
                 )
             if team2 in selector:
                 df["PLAYER"] = df["PLAYER"].apply(
-                    lambda name: remove_accents(name, team2, date.year)
+                    lambda name: remove_accents(name, team2, end_year)
                 )
             dfs.append(df)
         return {team1: dfs[0], team2: dfs[1]}

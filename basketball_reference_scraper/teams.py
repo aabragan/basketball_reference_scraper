@@ -1,6 +1,7 @@
+import re
+
 import pandas as pd
 from bs4 import BeautifulSoup
-import re
 
 try:
     from constants import TEAM_SETS, TEAM_TO_TEAM_ABBR
@@ -24,12 +25,12 @@ def get_roster(team, season_end_year):
         table = soup.find("table", {"id": "roster"})
         # get all player page urls
         player_links = table.find_all("a", href=re.compile("/players/"))
-        player_url_lookup = {}
+        player_id_map = {}
         # build lookup of player ids
         for item in player_links:
             key = str(item.next)
             value = str(item["href"]).replace(".html", "").replace("/players/", "")[2:]
-            player_url_lookup[key] = value
+            player_id_map[key] = value
 
         df = pd.read_html(format_html(table))[0]
         df.columns = [
@@ -43,9 +44,12 @@ def get_roster(team, season_end_year):
             "EXPERIENCE",
             "COLLEGE",
         ]
+
+        # remove (TW) suffix from player name
+        df["PLAYER"] = df["PLAYER"].apply(lambda x: str(x).replace("(TW)", "").strip())
         # map player id using player name
-        df["PLAYER_ID"] = df["PLAYER"].map(player_url_lookup)
-        
+        df["PLAYER_ID"] = df["PLAYER"].map(player_id_map)
+
         # remove rows with no player name (this was the issue above)
         df = df[df["PLAYER"].notna()]
         df["PLAYER"] = df["PLAYER"].apply(
@@ -142,7 +146,7 @@ def get_team_misc(team, season_end_year, data_format="TOTALS"):
 
 
 def get_roster_stats(
-    team: list, season_end_year: int, data_format="PER_GAME", playoffs=False
+    team: str, season_end_year: int, data_format="PER_GAME", playoffs=False
 ):
     if playoffs:
         xpath = f'//table[@id="playoffs_{data_format.lower()}"]'
@@ -154,14 +158,36 @@ def get_roster_stats(
     )
     if not table:
         raise ConnectionError("Request to basketball reference failed")
+
+    # get all player page urls
+    soup = BeautifulSoup(table, "html.parser")
+    # roster_table = soup.find("table", {"id": f"{data_format.lower()}"})
+    player_links = soup.find_all("a", href=re.compile("/players/"))
+    player_id_map = {}
+    # build lookup of player ids
+    for item in player_links:
+        href = str(item["href"])
+        if "/gamelog/" in href:
+            continue
+        key = str(item.next)
+        value = str(item["href"]).replace(".html", "").replace("/players/", "")[2:]
+        player_id_map[key] = value
+
     df = pd.read_html(format_html(table))[0]
     df.rename(
         columns={"Player": "PLAYER", "Age": "AGE", "Tm": "TEAM", "Pos": "POS"},
         inplace=True,
     )
+    # remove (TW) suffix from player name
+    df["PLAYER"] = df["PLAYER"].apply(lambda x: str(x).replace("(TW)", "").strip())
+
+    # map player id using player name
+    df["PLAYER_ID"] = df["PLAYER"].map(player_id_map)
+
     df["PLAYER"] = df["PLAYER"].apply(
         lambda name: remove_accents(name, team, season_end_year)
     )
+
     df = df.reset_index().drop(["Rk", "index"], axis=1)
     return df
 
