@@ -1,4 +1,6 @@
 from datetime import datetime
+import re
+from typing import Dict
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -104,18 +106,45 @@ def get_standings(date=None):
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, "html.parser")
         e_table = soup.find("table", attrs={"id": "standings_e"})
+        e_teams = e_table.find_all("a", href=re.compile("/teams/"))
+        team_map: Dict[str, str] = {}
+        for e_team in e_teams:
+            key = str(e_team.next)
+            value = (
+                str(e_team["href"])
+                .replace(".html", "")
+                .replace("/teams/", "")
+                .split("/")[0]
+            )
+            team_map[key] = value
+
         w_table = soup.find("table", attrs={"id": "standings_w"})
+        w_teams = w_table.find_all("a", href=re.compile("/teams/"))
+        for w_team in w_teams:
+            key = str(w_team.next)
+            value = (
+                str(w_team["href"])
+                .replace(".html", "")
+                .replace("/teams/", "")
+                .split("/")[0]
+            )
+            team_map[key] = value
+
         e_df = pd.DataFrame(
             columns=["TEAM", "W", "L", "W/L%", "GB", "PW", "PL", "PS/G", "PA/G"]
         )
         w_df = pd.DataFrame(
             columns=["TEAM", "W", "L", "W/L%", "GB", "PW", "PL", "PS/G", "PA/G"]
         )
+
         if e_table and w_table:
             e_df = pd.read_html(format_html(e_table))[0]
             w_df = pd.read_html(format_html(w_table))[0]
             e_df.rename(columns={"Eastern Conference": "TEAM"}, inplace=True)
             w_df.rename(columns={"Western Conference": "TEAM"}, inplace=True)
+
+        e_df["ABBREV"] = e_df["TEAM"].map(team_map)
+        w_df["ABBREV"] = w_df["TEAM"].map(team_map)
         d["EASTERN_CONF"] = e_df
         d["WESTERN_CONF"] = w_df
         return d
