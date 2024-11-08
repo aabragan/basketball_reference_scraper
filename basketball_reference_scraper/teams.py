@@ -1,4 +1,5 @@
 import re
+from typing import Dict
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -240,6 +241,19 @@ def get_teams(season_end_year):
         soup = BeautifulSoup(r.content, "html.parser")
 
         east_conf_table = soup.find("table", {"id": "confs_standings_E"})
+        e_teams = east_conf_table.find_all("a", href=re.compile("/teams/"))
+        team_map: Dict[str, str] = {}
+        for e_team in e_teams:
+            key = str(e_team.next)
+            value = (
+                str(e_team["href"])
+                .replace(".html", "")
+                .replace("/teams/", "")
+                .split("/")[0]
+            )
+            team_map[key] = value
+
+
         east_df = pd.read_html(format_html(east_conf_table))[0]
         east_df.columns = [
             "TEAM_NAME",
@@ -253,6 +267,16 @@ def get_teams(season_end_year):
         ]
 
         west_conf_table = soup.find("table", {"id": "confs_standings_W"})
+        w_teams = west_conf_table.find_all("a", href=re.compile("/teams/"))
+        for w_team in w_teams:
+            key = str(w_team.next)
+            value = (
+                str(w_team["href"])
+                .replace(".html", "")
+                .replace("/teams/", "")
+                .split("/")[0]
+            )
+            team_map[key] = value
         west_df = pd.read_html(format_html(west_conf_table))[0]
         west_df.columns = [
             "TEAM_NAME",
@@ -266,5 +290,10 @@ def get_teams(season_end_year):
         ]
 
         df = pd.concat([east_df, west_df])
+        df["ABBREV"] = df.apply(find_team_abbrev, team_map=team_map, axis=1)
 
     return df
+
+def find_team_abbrev(row, team_map:Dict[str,str]):
+    team_name = row["TEAM_NAME"].split("(")[0].strip()
+    return team_map[team_name]
