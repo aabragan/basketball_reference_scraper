@@ -45,7 +45,8 @@ print(df)
 df = get_game_logs("LeBron James", 2024, playoffs=False)
 print(df)
 
-from basketball_reference_scraper.seasons import get_schedule, get_standings
+from basketball_reference_scraper.seasons import (get_advanced_team_stats,
+                                                  get_schedule, get_standings)
 
 s = get_schedule(2024, playoffs=False)
 print(s)
@@ -53,6 +54,9 @@ print(s)
 # s.to_csv("nba_schedule_2023-24.csv", index=False)
 
 s = get_standings(date="2020-01-06")
+print(s)
+
+s = get_advanced_team_stats(season_end_year=2025)
 print(s)
 
 from basketball_reference_scraper.box_scores import get_box_scores

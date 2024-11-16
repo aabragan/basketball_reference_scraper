@@ -1,8 +1,9 @@
-from datetime import datetime
 import re
+from datetime import datetime
 from typing import Dict
 
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
 
 try:
@@ -150,3 +151,64 @@ def get_standings(date=None):
         return d
     else:
         raise ConnectionError("Request to basketball reference failed")
+
+
+def get_advanced_team_stats(season_end_year):
+    url = f"https://www.basketball-reference.com/leagues/NBA_{season_end_year}.html"
+
+    response = requests.get(url)
+
+    content = BeautifulSoup(response.content, "html.parser")
+    table = content.find("table", {"id": "advanced-team"})
+
+    teams = table.find_all("a", href=re.compile("/teams/"))
+    team_map: Dict[str, str] = {}
+    for team in teams:
+        key = str(team.next)
+        value = (
+        str(team["href"])
+        .replace(".html", "")
+        .replace("/teams/", "")
+        .split("/")[0]
+        )
+        team_map[key] = value
+
+    df = pd.read_html(format_html(table))[0]
+    df.columns = df.columns.map("|".join)
+    df.rename(columns=lambda c: c.split("|")[1], inplace=True)
+    df.drop(
+        columns=["Unnamed: 17_level_1", "Unnamed: 22_level_1", "Unnamed: 27_level_1"],
+        inplace=True,
+    )
+
+    df = df.iloc[:, :-3]
+    df.drop(df.tail(1).index, inplace=True)
+    df.columns = [
+        "RANK",
+        "TEAM",
+        "AGE",
+        "WIN",
+        "LOSS",
+        "PYTH_WIN",
+        "PYTH_LOSS",
+        "MOV",
+        "SOS",
+        "SRS",
+        "ORTG",
+        "DRTG",
+        "NRTG",
+        "PACE",
+        "FTAR",
+        "3PAR",
+        "TS_P",
+        "O_EFG_P",
+        "O_TOV_P",
+        "O_ORB_P",
+        "O_FT_FGA",
+        "D_EFG_P",
+        "D_TOV_P",
+        "D_DRB_P",
+        "D_FT_FGA",
+    ]
+    df["ABBREV"] = df["TEAM"].map(team_map)
+    return df
