@@ -6,23 +6,21 @@ from bs4 import BeautifulSoup
 
 try:
     from constants import TEAM_SETS, TEAM_TO_TEAM_ABBR
-    from request_utils import get_selenium_wrapper, get_wrapper
+    from request_utils import get_wrapper
     from utils import format_html, remove_accents
 except:
     from basketball_reference_scraper.constants import (TEAM_SETS,
                                                         TEAM_TO_TEAM_ABBR)
-    from basketball_reference_scraper.request_utils import (
-        get_selenium_wrapper, get_wrapper)
+    from basketball_reference_scraper.request_utils import get_wrapper
     from basketball_reference_scraper.utils import format_html, remove_accents
 
 
 def get_roster(team, season_end_year):
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
     df = None
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         table = soup.find("table", {"id": "roster"})
         # get all player page urls
         player_links = table.find_all("a", href=re.compile("/players/"))
@@ -68,13 +66,14 @@ def get_roster(team, season_end_year):
 
 
 def get_team_stats(team, season_end_year, data_format="TOTALS"):
-    xpath = '//table[@id="team_and_opponent"]'
-    table = get_selenium_wrapper(
-        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html",
-        xpath,
+    soup = get_wrapper(
+        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
-    if not table:
+
+    if not soup:
         raise ConnectionError("Request to basketball reference failed")
+
+    table = soup.find("table", {"id": "team_and_opponent"})
     df = pd.read_html(format_html(table))[0]
     opp_idx = df[df["Unnamed: 0"] == "Opponent"].index[0]
     df = df[:opp_idx]
@@ -96,13 +95,14 @@ def get_team_stats(team, season_end_year, data_format="TOTALS"):
 
 
 def get_opp_stats(team, season_end_year, data_format="PER_GAME"):
-    xpath = '//table[@id="team_and_opponent"]'
-    table = get_selenium_wrapper(
-        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html",
-        xpath,
+    soup = get_wrapper(
+        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
-    if not table:
+
+    if not soup:
         raise ConnectionError("Request to basketball reference failed")
+
+    table = soup.find("table", {"id": "team_and_opponent"})
     df = pd.read_html(format_html(table))[0]
     opp_idx = df[df["Unnamed: 0"] == "Opponent"].index[0]
     df = df[opp_idx:]
@@ -124,13 +124,15 @@ def get_opp_stats(team, season_end_year, data_format="PER_GAME"):
 
 
 def get_team_misc(team, season_end_year, data_format="TOTALS"):
-    xpath = '//table[@id="team_misc"]'
-    table = get_selenium_wrapper(
-        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html",
-        xpath,
+    soup = get_wrapper(
+        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
-    if not table:
+
+    if not soup:
         raise ConnectionError("Request to basketball reference failed")
+
+    table = soup.find("table", {"id": "team_misc"})
+
     df = pd.read_html(format_html(table))[0]
     if data_format == "TOTALS":
         row_idx = "Team"
@@ -149,19 +151,19 @@ def get_team_misc(team, season_end_year, data_format="TOTALS"):
 def get_roster_stats(
     team: str, season_end_year: int, data_format="PER_GAME", playoffs=False
 ):
-    if playoffs:
-        xpath = f'//table[@id="playoffs_{data_format.lower()}"]'
-    else:
-        xpath = f'//table[@id="{data_format.lower()}"]'
-    table = get_selenium_wrapper(
-        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html",
-        xpath,
+    # get all player page urls
+
+    soup = get_wrapper(
+        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
-    if not table:
+    if not soup:
         raise ConnectionError("Request to basketball reference failed")
 
-    # get all player page urls
-    soup = BeautifulSoup(table, "html.parser")
+    if playoffs:
+        table = soup.find("table", {"id": f"playoffs_{data_format.lower()}_stats"})
+    else:
+        table = soup.find("table", {"id": f"{data_format.lower()}_stats"})
+
     # roster_table = soup.find("table", {"id": f"{data_format.lower()}"})
     player_links = soup.find_all("a", href=re.compile("/players/"))
     player_id_map = {}
@@ -194,11 +196,10 @@ def get_roster_stats(
 
 
 def get_team_ratings(season_end_year: int, team=[]):
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/leagues/NBA_{season_end_year}_ratings.html"
     )
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         table = soup.find("table", {"id": "ratings"})
 
         df = pd.read_html(format_html(table))[0]
@@ -233,18 +234,16 @@ def get_team_ratings(season_end_year: int, team=[]):
 
 
 def get_teams(season_end_year):
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/leagues/NBA_{season_end_year}.html"
     )
     df = None
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
-
+    if soup:
         east_conf_table = soup.find("table", {"id": "confs_standings_E"})
         e_teams = east_conf_table.find_all("a", href=re.compile("/teams/"))
         team_map: Dict[str, str] = {}
         for e_team in e_teams:
-            key = str(e_team.next)
+            key = str(e_team.next).replace("*", "")
             value = (
                 str(e_team["href"])
                 .replace(".html", "")
@@ -252,7 +251,6 @@ def get_teams(season_end_year):
                 .split("/")[0]
             )
             team_map[key] = value
-
 
         east_df = pd.read_html(format_html(east_conf_table))[0]
         east_df.columns = [
@@ -269,7 +267,7 @@ def get_teams(season_end_year):
         west_conf_table = soup.find("table", {"id": "confs_standings_W"})
         w_teams = west_conf_table.find_all("a", href=re.compile("/teams/"))
         for w_team in w_teams:
-            key = str(w_team.next)
+            key = str(w_team.next).replace("*", "")
             value = (
                 str(w_team["href"])
                 .replace(".html", "")
@@ -290,10 +288,159 @@ def get_teams(season_end_year):
         ]
 
         df = pd.concat([east_df, west_df])
-        df["ABBREV"] = df.apply(find_team_abbrev, team_map=team_map, axis=1)
+        df["ABBREV"] = df.apply(
+            find_team_abbrev, team_map=team_map, col="TEAM_NAME", axis=1
+        )
 
     return df
 
-def find_team_abbrev(row, team_map:Dict[str,str]):
-    team_name = row["TEAM_NAME"].split("(")[0].strip()
+
+def find_team_abbrev(row, team_map: Dict[str, str], col="TEAM"):
+    team_name = row[col].split("(")[0].strip().replace("*", "")
     return team_map[team_name]
+
+
+def get_team_games(team, season_end_year, completed_games: bool = True):
+    soup = get_wrapper(
+        f"https://www.basketball-reference.com/teams/{team}/{season_end_year}_games.html"
+    )
+    df = None
+    if soup:
+        table = soup.find("table", {"id": "games"})
+        table_body = table.find_all("tbody")
+        rows = table_body[0].find_all("tr")
+        game_rows = []
+        for row in rows:
+            if row.get("class") is not None:
+                continue
+            cols = row.find_all("td")
+            box_score_url = ""
+            game_date = ""
+            is_away = ""
+            opponent = ""
+            game_result = ""
+            team_score = 0
+            opp_score = 0
+            wins = 0
+            losses = 0
+            streak = ""
+            abbrev = ""
+            for col in cols:
+                if col.get("data-stat") is not None:
+                    if col.get("data-stat") == "date_game":
+                        game_date = col.get("csk")
+                    elif col.get("data-stat") == "box_score_text":
+                        box_score_url = col.next.get("href")
+                    elif col.get("data-stat") == "game_location":
+                        is_away = "Y" if col.text == "@" else ""
+                    elif col.get("data-stat") == "opp_name":
+                        opponent = col.next.text
+                        abbrev = col.next.get("href").split("/")[2]
+                    elif col.get("data-stat") == "game_result":
+                        game_result = col.text
+                    elif col.get("data-stat") == "pts":
+                        team_score = col.text
+                    elif col.get("data-stat") == "opp_pts":
+                        opp_score = col.text
+                    elif col.get("data-stat") == "wins":
+                        wins = col.text
+                    elif col.get("data-stat") == "losses":
+                        losses = col.text
+                    elif col.get("data-stat") == "game_streak":
+                        streak = col.text
+
+            if completed_games and game_result not in ["W", "L"]:
+                continue
+
+            df_row = [
+                game_date,
+                box_score_url,
+                is_away,
+                opponent,
+                game_result,
+                team_score,
+                opp_score,
+                wins,
+                losses,
+                streak,
+                abbrev,
+            ]
+            game_rows.append(df_row)
+
+        df = pd.DataFrame(
+            game_rows,
+            columns=[
+                "DATE",
+                "BOX_SCORE_LINK",
+                "AWAY",
+                "OPP_TEAM",
+                "RESULT",
+                "TEAM_SCORE",
+                "OPP_SCORE",
+                "WINS",
+                "LOSSES",
+                "STREAK",
+                "ABBREV",
+            ],
+        )
+        # teams = table.find_all("a", href=re.compile("/teams/"))
+        # team_map: Dict[str, str] = {}
+        # for o_team in teams:
+        #     if o_team == "Opponent":
+        #         continue
+
+        #     test = o_team.previous.previous.previous
+        #     key = str(o_team.next)
+        #     value = (
+        #         str(o_team["href"])
+        #         .replace(".html", "")
+        #         .replace("/teams/", "")
+        #         .split("/")[0]
+        #     )
+        #     team_map[key] = value
+
+        # df = pd.read_html(format_html(table))[0]
+        # print(df.head())
+        # df.drop(df[df["Opponent"] == "Opponent"].index, inplace=True)
+
+        # df.drop(
+        #     columns=[
+        #         "G",
+        #         "Start (ET)",
+        #         "Unnamed: 3",
+        #         "Unnamed: 7",
+        #         "Unnamed: 8",
+        #         "Attend.",
+        #         "LOG",
+        #         "Notes",
+        #     ],
+        #     inplace=True,
+        # )
+        # df.columns = [
+        #     "DATE",
+        #     "BOX_SCORE_LINK",
+        #     "AWAY",
+        #     "OPP_TEAM",
+        #     "RESULT",
+        #     "TEAM_SCORE",
+        #     "OPP_SCORE",
+        #     "WINS",
+        #     "LOSSES",
+        #     "STREAK",
+        # ]
+        # df["ABBREV"] = df.apply(
+        #     find_team_abbrev, team_map=team_map, col="OPP_TEAM", axis=1
+        # )
+        # df["AWAY"] = df["AWAY"].apply(lambda x: "Y" if x == "@" else "")
+        # df["BOX_SCORE_LINK"] = df.apply(
+        #     find_box_score_link, game_lookup=game_lookup, axis=1
+        # )
+
+        # df.reset_index(drop=True, inplace=True)
+
+    return df
+
+
+def find_box_score_link(row, game_lookup: Dict[str, str], col="DATE"):
+    date = row[col]
+    return game_lookup[date]

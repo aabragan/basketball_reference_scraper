@@ -1,7 +1,20 @@
+import json
+from datetime import date, time
+from time import sleep
+
+import pandas as pd
+
 from basketball_reference_scraper.teams import (get_opp_stats, get_roster,
                                                 get_roster_stats,
-                                                get_team_misc, get_team_stats,
-                                                get_teams)
+                                                get_team_games, get_team_misc,
+                                                get_team_stats, get_teams)
+
+df = get_team_games("OKC", 2025)
+print(df)
+
+df = get_team_games("OKC", 2025, True)
+print(df)
+
 
 df = get_roster("GSW", 2019)
 print(df)
@@ -45,13 +58,41 @@ print(df)
 df = get_game_logs("LeBron James", 2024, playoffs=False)
 print(df)
 
+
 from basketball_reference_scraper.seasons import (get_advanced_team_stats,
+                                                  get_four_factors,
+                                                  get_four_factors_for_season,
                                                   get_schedule, get_standings)
 
-s = get_schedule(2024, playoffs=False)
-print(s)
-# s.to_excel("nba_schedule_2023-24.xlsx", index=False)
-# s.to_csv("nba_schedule_2023-24.csv", index=False)
+df: pd.DataFrame = get_four_factors_for_season(
+    2025, date(2024, 10, 22), date(2024, 10, 31)
+)
+print(df)
+df.to_csv("nba_four_factors_10_2024.csv", index=False)
+
+df: pd.DataFrame = get_four_factors_for_season(
+    2025, date(2024, 11, 1), date(2024, 11, 30)
+)
+print(df)
+df.to_csv("nba_four_factors_11_2024.csv", index=False)
+
+s = get_schedule(2024, playoffs=True)
+# print(s)
+s.to_csv("nba_schedule_2023_24.csv", index=False)
+
+
+schedule = pd.read_csv("nba_schedule_2023_24.csv")
+df: pd.DataFrame = get_four_factors_for_season(
+    schedule, date(2023, 10, 24), date(2024, 6, 17)
+)
+print(df)
+df.to_csv("nba_four_factors_2023_24.csv", index=False)
+
+df = get_four_factors("/boxscores/202410240DEN.html")
+print(df)
+
+s.to_excel("nba_schedule_2023-24.xlsx", index=False)
+
 
 s = get_standings(date="2020-01-06")
 print(s)
@@ -61,12 +102,15 @@ print(s)
 
 from basketball_reference_scraper.box_scores import get_box_scores
 
-s = get_box_scores("2023-10-24", "GSW", "PHO", period="GAME", stat_type="BASIC")
-print(s["PLAYER"])
+s = get_box_scores("2023-10-24", "PHO", "GSW", period="GAME", stat_type="ADVANCED")
+# print(s["GSW"]["PLAYER"])
+# print(s["PHO"]["PLAYER"])
+s["GSW"].to_csv("gsw_advanced_box_scores_20241024.csv", index=False)
+s["PHO"].to_csv("pho_advanced_box_scores_20241024.csv", index=False)
 
 from basketball_reference_scraper.pbp import get_pbp
 
-s = get_pbp("2020-01-13", "CHI", "BOS")
+s = get_pbp("2023-10-24", "GSW", "PHO")
 print(s)
 
 from basketball_reference_scraper.shot_charts import get_shot_chart

@@ -13,6 +13,9 @@ except:
     from basketball_reference_scraper.request_utils import get_wrapper
     from basketball_reference_scraper.utils import format_html
 
+import random
+import time
+
 
 def get_schedule(season, playoffs=False):
     months = [
@@ -23,9 +26,10 @@ def get_schedule(season, playoffs=False):
         "February",
         "March",
         "April",
-        "May",
-        "June",
     ]
+    if playoffs:
+        months.extend(["May", "June"])
+
     if season == 2020:
         months = [
             "October-2019",
@@ -39,59 +43,133 @@ def get_schedule(season, playoffs=False):
             "September",
             "October-2020",
         ]
-    df = pd.DataFrame()
+    df = None
+    game_rows = []
     for month in months:
-        r = get_wrapper(
+        soup = get_wrapper(
             f"https://www.basketball-reference.com/leagues/NBA_{season}_games-{month.lower()}.html"
         )
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.content, "html.parser")
-            table = soup.find("table", attrs={"id": "schedule"})
-            if table:
-                month_df = pd.read_html(format_html(table))[0]
-                df = pd.concat([df, month_df])
+        if soup:
+            table = soup.find("table", {"id": "schedule"})
+            if table is None:
+                continue
+            table_body = table.find_all("tbody")
+            rows = table_body[0].find_all("tr")
+            for row in rows:
+                if row.get("class") is not None:
+                    continue
+                date_col = row.find("th", {"data-stat": "date_game"})
+                if date_col is None:
+                    continue
+                game_date_str = date_col.get("csk")[:-4]
+                game_date = datetime.strptime(game_date_str, "%Y%m%d")
 
-    df = df.reset_index()
+                visitor_abbrev = ""
+                visitor_name = ""
+                visitor_pts = ""
+                home_abbrev = ""
+                home_name = ""
+                home_pts = ""
+                box_score_url = ""
+                overtime = ""
+                duration = ""
 
-    cols_to_remove = [i for i in df.columns if "Unnamed: 6" in i]
-    cols_to_remove += [i for i in df.columns if "Notes" in i]
-    cols_to_remove += [i for i in df.columns if "Start" in i]
-    cols_to_remove += [i for i in df.columns if "Attend" in i]
-    cols_to_remove += [i for i in df.columns if "Arena" in i]
-    cols_to_remove += ["index"]
-    df = df.drop(cols_to_remove, axis=1)
+                cols = row.find_all("td")
+                for col in cols:
+                    if col.get("data-stat") is not None:
+                        if col.get("data-stat") == "visitor_team_name":
+                            visitor_abbrev = col.get("csk")[:3]
+                            visitor_name = col.next.get_text()
+                        elif col.get("data-stat") == "visitor_pts":
+                            visitor_pts = col.get_text()
+                        elif col.get("data-stat") == "home_team_name":
+                            home_abbrev = col.get("csk")[:3]
+                            home_name = col.next.get_text()
+                        elif col.get("data-stat") == "home_pts":
+                            home_pts = col.get_text()
+                        elif col.get("data-stat") == "box_score_text":
+                            box_score_url = col.next.get("href")
+                        elif col.get("data-stat") == "overtimes":
+                            overtime = "Y" if col.get_text() == "OT" else "N"
+                        elif col.get("data-stat") == "game_duration":
+                            duration = col.get_text()
 
-    df.columns = ["DATE", "VISITOR", "VISITOR_PTS", "HOME", "HOME_PTS", "OT?", "LOG"]
-    df["OT?"] = df["OT?"].fillna("N").apply(lambda x: "Y" if x == "OT" else "N")
+                df_row = [
+                    game_date,
+                    visitor_abbrev,
+                    visitor_name,
+                    visitor_pts,
+                    home_abbrev,
+                    home_name,
+                    home_pts,
+                    box_score_url,
+                    overtime,
+                    duration,
+                ]
+                game_rows.append(df_row)
 
-    if season == 2020:
-        df = df[df["DATE"] != "Playoffs"]
-        df["DATE"] = df["DATE"].apply(lambda x: pd.to_datetime(x))
-        df = df.sort_values(by="DATE")
-        df = df.reset_index().drop("index", axis=1)
-        playoff_loc = df[df["DATE"] == pd.to_datetime("2020-08-17")].head(n=1)
-        if len(playoff_loc.index) > 0:
-            playoff_index = playoff_loc.index[0]
-        else:
-            playoff_index = len(df)
-        if playoffs:
-            df = df[playoff_index:]
-        else:
-            df = df[:playoff_index]
-    else:
-        # account for 1953 season where there's more than one "playoffs" header
-        if season == 1953:
-            df.drop_duplicates(subset=["DATE", "HOME", "VISITOR"], inplace=True)
-        playoff_loc = df[df["DATE"] == "Playoffs"]
-        if len(playoff_loc.index) > 0:
-            playoff_index = playoff_loc.index[0]
-        else:
-            playoff_index = len(df)
-        if playoffs:
-            df = df[playoff_index + 1 :]
-        else:
-            df = df[:playoff_index]
-        df["DATE"] = df["DATE"].apply(lambda x: pd.to_datetime(x))
+            df = pd.DataFrame(
+                game_rows,
+                columns=[
+                    "DATE",
+                    "VISITOR_ABBREV",
+                    "VISITOR",
+                    "VISITOR_PTS",
+                    "HOME_ABBREV",
+                    "HOME",
+                    "HOME_PTS",
+                    "BOX_SCORE_LINK",
+                    "OT",
+                    "DURATION",
+                ],
+            )
+
+            # month_df = pd.read_html(format_html(table))[0]
+            # df = pd.concat([df, month_df])
+
+    # df = df.reset_index()
+
+    # cols_to_remove = [i for i in df.columns if "Unnamed: 6" in i]
+    # cols_to_remove += [i for i in df.columns if "Notes" in i]
+    # cols_to_remove += [i for i in df.columns if "Start" in i]
+    # cols_to_remove += [i for i in df.columns if "Attend" in i]
+    # cols_to_remove += [i for i in df.columns if "Arena" in i]
+    # cols_to_remove += ["index"]
+    # df = df.drop(cols_to_remove, axis=1)
+
+    # df.columns = ["DATE", "VISITOR", "VISITOR_PTS", "HOME", "HOME_PTS", "OT?", "LOG"]
+    # df["OT?"] = df["OT?"].fillna("N").apply(lambda x: "Y" if x == "OT" else "N")
+    # df = df[~df["DATE"].isin(["Date"])]
+
+    # if season == 2020:
+    #     df = df[df["DATE"] != "Playoffs"]
+    #     df["DATE"] = pd.to_datetime(df["DATE"])
+    #     df = df.sort_values(by="DATE")
+    #     df = df.reset_index().drop("index", axis=1)
+    #     playoff_loc = df[df["DATE"] == pd.to_datetime("2020-08-17")].head(n=1)
+    #     if len(playoff_loc.index) > 0:
+    #         playoff_index = playoff_loc.index[0]
+    #     else:
+    #         playoff_index = len(df)
+    #     if playoffs:
+    #         df = df[playoff_index:]
+    #     else:
+    #         df = df[:playoff_index]
+    # else:
+    #     # account for 1953 season where there's more than one "playoffs" header
+    #     if season == 1953:
+    #         df.drop_duplicates(subset=["DATE", "HOME", "VISITOR"], inplace=True)
+    #     playoff_loc = df[df["DATE"] == "Playoffs"]
+    #     if len(playoff_loc.index) > 0:
+    #         playoff_index = playoff_loc.index[0]
+    #     else:
+    #         playoff_index = len(df)
+    #     if playoffs:
+    #         df = df[playoff_index + 1 :]
+    #     else:
+    #         df = df[:playoff_index]
+    #     # df["DATE"] = df["DATE"].apply(lambda x: pd.to_datetime(x))
+    #     df["DATE"] = pd.to_datetime(df["DATE"])
     return df
 
 
@@ -101,11 +179,10 @@ def get_standings(date=None):
     else:
         date = pd.to_datetime(date)
     d = {}
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/friv/standings.fcgi?month={date.month}&day={date.day}&year={date.year}"
     )
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         e_table = soup.find("table", attrs={"id": "standings_e"})
         e_teams = e_table.find_all("a", href=re.compile("/teams/"))
         team_map: Dict[str, str] = {}
@@ -166,10 +243,7 @@ def get_advanced_team_stats(season_end_year):
     for team in teams:
         key = str(team.next)
         value = (
-        str(team["href"])
-        .replace(".html", "")
-        .replace("/teams/", "")
-        .split("/")[0]
+            str(team["href"]).replace(".html", "").replace("/teams/", "").split("/")[0]
         )
         team_map[key] = value
 
@@ -212,3 +286,127 @@ def get_advanced_team_stats(season_end_year):
     ]
     df["ABBREV"] = df["TEAM"].map(team_map)
     return df
+
+
+def get_four_factors(url_suffix):
+
+    url = f"https://www.basketball-reference.com{url_suffix}"
+    soup = get_wrapper(url)
+
+    div = soup.find("div", {"id": "div_four_factors"})
+    if div is None:
+        return None
+    table = div.find("table", {"id": "four_factors"})
+    if table is None:
+        return None
+    table_body = table.find_all("tbody")
+    rows = table_body[0].find_all("tr")
+
+    game_date_str = url_suffix.replace("/boxscores/", "").replace(".html", "")[:-4]
+    game_date = datetime.strptime(game_date_str, "%Y%m%d")
+
+    away_ff_row = build_ff_list(rows[0], game_date, False)
+    home_row = build_ff_list(rows[1], game_date, True)
+
+    df = pd.DataFrame(
+        [away_ff_row, home_row],
+        columns=[
+            "GAME_DATE",
+            "HOME",
+            "TEAM",
+            "PACE",
+            "EFG",
+            "TOV",
+            "ORB",
+            "FT_FGA",
+            "OFF_RTG",
+        ],
+    )
+    df["PACE"] = df["PACE"].astype(float)
+    df["EFG"] = df["EFG"].astype(float)
+    df["TOV"] = df["TOV"].astype(float)
+    df["ORB"] = df["ORB"].astype(float)
+    df["FT_FGA"] = df["FT_FGA"].astype(float)
+    df["OFF_RTG"] = df["OFF_RTG"].astype(float)
+    df.reset_index(drop=True, inplace=True)
+
+    return df
+
+
+def get_four_factors_for_season(schedule, start, end):
+    final_df: pd.DataFrame = None
+    for index, row in schedule.iterrows():
+        if row["HOME_PTS"] == "":
+            continue
+
+        if pd.Timestamp(row["DATE"]) >= pd.Timestamp(start) and pd.Timestamp(
+            row["DATE"]
+        ) <= pd.Timestamp(end):
+            print(row["DATE"])
+            url_suffix = row["BOX_SCORE_LINK"]
+            df: pd.DataFrame = get_four_factors(url_suffix)
+            time.sleep(random.randint(5, 10))
+            if df is None:
+                continue
+            if index == 0:
+                final_df = df
+            else:
+                final_df = pd.concat([final_df, df])
+
+    return final_df
+
+
+def get_four_factors_for_season_full(season_end_year, start, end):
+    schedule: pd.DataFrame = get_schedule(season_end_year)
+
+    final_df: pd.DataFrame = None
+    for index, row in schedule.iterrows():
+        if row["HOME_PTS"] == "":
+            continue
+
+        if row["DATE"] >= pd.Timestamp(start) and row["DATE"] <= pd.Timestamp(end):
+            print(row["DATE"])
+            url_suffix = row["BOX_SCORE_LINK"]
+            df: pd.DataFrame = get_four_factors(url_suffix)
+            time.sleep(random.randint(5, 10))
+            if df is None:
+                continue
+            if index == 0:
+                final_df = df
+            else:
+                final_df = pd.concat([final_df, df])
+
+    return final_df
+
+
+def build_ff_list(row, game_date, is_home_team):
+    teams = row.find_all("th")
+    if teams[0].get("data-stat") == "team_id":
+        team = teams[0].next.text
+
+    cols = row.find_all("td")
+    for col in cols:
+        if col.get("data-stat") == "pace":
+            pace = col.text
+        if col.get("data-stat") == "efg_pct":
+            efg_pct = col.text
+        if col.get("data-stat") == "tov_pct":
+            tov_pct = col.text
+        if col.get("data-stat") == "orb_pct":
+            orb_pct = col.text
+        if col.get("data-stat") == "ft_rate":
+            ft_rate = col.text
+        if col.get("data-stat") == "off_rtg":
+            off_rtg = col.text
+    ff_list = [
+        game_date,
+        is_home_team,
+        team,
+        pace,
+        efg_pct,
+        tov_pct,
+        orb_pct,
+        ft_rate,
+        off_rtg,
+    ]
+    return ff_list

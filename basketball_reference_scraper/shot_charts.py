@@ -6,12 +6,12 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from requests import get
 
+from basketball_reference_scraper.teams import get_team_games
+
 try:
     from request_utils import get_wrapper
-    from utils import get_game_suffix
 except:
     from basketball_reference_scraper.request_utils import get_wrapper
-    from basketball_reference_scraper.utils import get_game_suffix
 
 
 def get_location(s):
@@ -42,12 +42,16 @@ def get_description(s):
 
 def get_shot_chart(date, team1, team2):
     date = pd.to_datetime(date)
-    suffix = get_game_suffix(date, team1, team2).replace("/boxscores", "")
-    r = get_wrapper(
+    end_year = date.year + 1 if date.month > 9 else date.year
+    team_games = get_team_games(team1, end_year, False)
+    suffix = team_games[team_games["DATE"] == date.strftime("%Y-%m-%d")][
+        "BOX_SCORE_LINK"
+    ].iloc[0]
+    suffix = suffix.replace("/boxscores", "")
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/boxscores/shot-chart{suffix}"
     )
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         shot_chart1_div = soup.find("div", attrs={"id": f"shots-{team1}"})
         shot_chart2_div = soup.find("div", attrs={"id": f"shots-{team2}"})
         items1: List = []

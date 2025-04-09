@@ -13,8 +13,8 @@ except:
 
 
 def get_injury_report():
-    r = get_wrapper(f"https://www.basketball-reference.com/friv/injuries.fcgi")
-    if r.status_code == 200:
+    soup = get_wrapper(f"https://www.basketball-reference.com/friv/injuries.fcgi")
+    if soup:
         soup = BeautifulSoup(r.content, "html.parser")
         table = soup.find("table")
         df = pd.read_html(format_html(table))[0]

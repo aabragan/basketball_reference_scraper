@@ -4,12 +4,11 @@ from requests import get
 
 try:
     from lookup import lookup
-    from request_utils import get_selenium_wrapper, get_wrapper
+    from request_utils import get_wrapper
     from utils import format_html, get_player_suffix
 except:
     from basketball_reference_scraper.lookup import lookup
-    from basketball_reference_scraper.request_utils import (
-        get_selenium_wrapper, get_wrapper)
+    from basketball_reference_scraper.request_utils import get_wrapper
     from basketball_reference_scraper.utils import (format_html,
                                                     get_player_suffix)
 
@@ -46,21 +45,19 @@ def _get_stats_internal(
     stat_type = stat_type.lower()
     table = None
     if stat_type in ["per_game", "totals", "advanced"] and not playoffs:
-        r = get_wrapper(f"https://www.basketball-reference.com/{suffix}")
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.content, "html.parser")
+        soup = get_wrapper(f"https://www.basketball-reference.com/{suffix}")
+        if soup:
             table = soup.find("table", {"id": stat_type})
             table = str(table)
         else:
             raise ConnectionError("Request to basketball reference failed")
     elif stat_type in ["per_minute", "per_poss"] or playoffs:
+        soup = get_wrapper(f"https://www.basketball-reference.com/{suffix}")
         if playoffs:
-            xpath = f"//table[@id='playoffs_{stat_type}']"
+            table = soup.find("table", {"id": "playoffs_{stat_type}"})
         else:
-            xpath = f"//table[@id='{stat_type}']"
-        table = get_selenium_wrapper(
-            f"https://www.basketball-reference.com/{suffix}", xpath
-        )
+            table = soup.find("table", {"id": "{stat_type}"})
+
     if table is None:
         return pd.DataFrame()
     df = pd.read_html(format_html(table))[0]
@@ -110,9 +107,8 @@ def _get_game_logs_internal(suffix, year, playoffs=False):
     else:
         selector = "pgl_basic"
         url = f"https://www.basketball-reference.com/{suffix}/gamelog/{year}"
-    r = get_wrapper(url)
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    soup = get_wrapper(url)
+    if soup:
         table = soup.find("table", {"id": selector})
         if table is None:
             return pd.DataFrame()
@@ -153,11 +149,10 @@ def get_player_headshot(_name, ask_matches=True):
 def get_player_splits(_name, season_end_year, stat_type="PER_GAME", ask_matches=True):
     name = lookup(_name, ask_matches)
     suffix = get_player_suffix(name)[:-5]
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/{suffix}/splits/{season_end_year}"
     )
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         table = soup.find("table")
         if table:
             df = pd.read_html(format_html(table))[0]

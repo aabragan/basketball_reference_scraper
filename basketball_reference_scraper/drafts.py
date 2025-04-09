@@ -10,10 +10,9 @@ except:
 
 
 def get_draft_class(year):
-    r = get_wrapper(f"https://www.basketball-reference.com/draft/NBA_{year}.html")
+    soup = get_wrapper(f"https://www.basketball-reference.com/draft/NBA_{year}.html")
 
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
+    if soup:
         table = soup.find("table")
         df = pd.read_html(format_html(table))[0]
 

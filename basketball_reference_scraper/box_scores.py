@@ -7,16 +7,16 @@ from bs4 import BeautifulSoup
 from requests import get
 from unidecode import unidecode
 
+from basketball_reference_scraper.teams import get_team_games
+
 try:
     from players import get_stats
     from request_utils import get_wrapper
-    from utils import format_html, get_game_suffix, remove_accents
+    from utils import format_html, remove_accents
 except:
     from basketball_reference_scraper.players import get_stats
     from basketball_reference_scraper.request_utils import get_wrapper
-    from basketball_reference_scraper.utils import (format_html,
-                                                    get_game_suffix,
-                                                    remove_accents)
+    from basketball_reference_scraper.utils import format_html, remove_accents
 
 
 def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
@@ -36,11 +36,41 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
     if stat_type not in ["BASIC", "ADVANCED"]:
         raise ValueError('stat_type must be "BASIC" or "ADVANCED"')
     date = pd.to_datetime(date)
-    suffix = get_game_suffix(date, team1, team2)
+    end_year = date.year + 1 if date.month > 9 else date.year
+    team_games = get_team_games(team1, end_year, False)
+    suffix = team_games[team_games["DATE"] == date.strftime("%Y-%m-%d")][
+        "BOX_SCORE_LINK"
+    ].iloc[0]
     url = f"https://www.basketball-reference.com/{suffix}"
-    r = get_wrapper(url)
+    soup = get_wrapper(url)
 
-    if r.status_code == 200:
+    if soup:
+        team1_table = soup.find("table", {"id": f"box-{team1}-game-basic"})
+        if team1_table is None:
+            raise ConnectionError(f"Request to basketball reference failed for {url}")
+
+        team1_players = team1_table.find_all("a", href=re.compile("/players/"))
+        team1_map: Dict[str, str] = {}
+        for player in team1_players:
+            key = str(player.next)
+            value = str(player["href"]).replace(".html", "").split("/")[-1]
+            team1_map[key] = value
+
+        print(team1_map)
+
+        team2_table = soup.find("table", {"id": f"box-{team2}-game-basic"})
+        if team2_table is None:
+            raise ConnectionError(f"Request to basketball reference failed for {url}")
+
+        team2_players = team2_table.find_all("a", href=re.compile("/players/"))
+        team2_map: Dict[str, str] = {}
+        for player in team2_players:
+            key = str(player.next)
+            value = str(player["href"]).replace(".html", "").split("/")[-1]
+            team2_map[key] = value
+
+        print(team2_map)
+
         dfs = []
         if period == "GAME":
             if stat_type == "ADVANCED":
@@ -52,7 +82,6 @@ def get_box_scores(date, team1, team2, period="GAME", stat_type="BASIC"):
                 f"box-{team1}-{period.lower()}-basic",
                 f"box-{period.lower()}-game-basic",
             ]
-        soup = BeautifulSoup(r.content, "html.parser")
         for selector in selectors:
             table = soup.find("table", {"id": selector})
             raw_df = pd.read_html(format_html(table))[0]
@@ -105,10 +134,9 @@ def get_all_star_box_score(year: int):
     """
     if year >= datetime.now().year or year < 1951:
         raise ValueError("Please enter a valid year")
-    r = get_wrapper(f"https://www.basketball-reference.com/allstar/NBA_{year}.html")
-    if r.status_code == 200:
+    soup = get_wrapper(f"https://www.basketball-reference.com/allstar/NBA_{year}.html")
+    if soup:
         dfs = []
-        soup = BeautifulSoup(r.content, "html.parser")
         team_names = list(
             map(lambda el: el.text, soup.select("div.section_heading > h2")[1:3])
         )

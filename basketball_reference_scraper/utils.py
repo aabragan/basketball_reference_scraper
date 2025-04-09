@@ -12,20 +12,19 @@ except:
     from basketball_reference_scraper.request_utils import get_wrapper
 
 
-def get_game_suffix(date, team1, team2):
-    r = get_wrapper(
-        f"https://www.basketball-reference.com/boxscores/?month={date.month}&year={date.year}&day={date.day}"
-    )
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
-        for table in soup.find_all("table", attrs={"class": "teams"}):
-            for anchor in table.find_all("a"):
-                if "boxscores" in anchor.attrs["href"]:
-                    if team1 in str(anchor.attrs["href"]) or team2 in str(
-                        anchor.attrs["href"]
-                    ):
-                        suffix = anchor.attrs["href"]
-                        return suffix
+# def get_game_suffix(date, team1, team2):
+#     soup = get_wrapper(
+#         f"https://www.basketball-reference.com/boxscores/?month={date.month}&year={date.year}&day={date.day}"
+#     )
+#     if soup:
+#         for table in soup.find_all("table", attrs={"class": "teams"}):
+#             for anchor in table.find_all("a"):
+#                 if "boxscores" in anchor.attrs["href"]:
+#                     if team1 in str(anchor.attrs["href"]) or team2 in str(
+#                         anchor.attrs["href"]
+#                     ):
+#                         suffix = anchor.attrs["href"]
+#                         return suffix
 
 
 """
@@ -170,14 +169,13 @@ def remove_accents(name, team, season_end_year):
     alphabet = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXZY ")
     if len(set(name).difference(alphabet)) == 0:
         return name
-    r = get_wrapper(
+    soup = get_wrapper(
         f"https://www.basketball-reference.com/teams/{team}/{season_end_year}.html"
     )
     team_df = None
     best_match = name
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.content, "html.parser")
-        table = soup.find("table")
+    if soup:
+        table = soup.find("table", {"id": "roster"})
         team_df = pd.read_html(format_html(table))[0]
         max_matches = 0
         for p in team_df["Player"]:
