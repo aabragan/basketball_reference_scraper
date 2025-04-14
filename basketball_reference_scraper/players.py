@@ -105,7 +105,8 @@ def _get_game_logs_internal(suffix, year, playoffs=False):
         selector = "pgl_basic_playoffs"
         url = f"https://www.basketball-reference.com/{suffix}/gamelog-playoffs"
     else:
-        selector = "pgl_basic"
+        # selector = "pgl_basic"
+        selector = "player_game_log_reg"
         url = f"https://www.basketball-reference.com/{suffix}/gamelog/{year}"
     soup = get_wrapper(url)
     if soup:
@@ -117,10 +118,10 @@ def _get_game_logs_internal(suffix, year, playoffs=False):
             columns={
                 "Date": "DATE",
                 "Age": "AGE",
-                "Tm": "TEAM",
+                "Team": "TEAM",
                 "Unnamed: 5": "HOME/AWAY",
                 "Opp": "OPPONENT",
-                "Unnamed: 7": "RESULT",
+                "Result": "RESULT",
                 "GmSc": "GAME_SCORE",
                 "Series": "SERIES",
             },
@@ -130,9 +131,14 @@ def _get_game_logs_internal(suffix, year, playoffs=False):
             lambda x: "AWAY" if x == "@" else "HOME"
         )
         df = df[df["Rk"] != "Rk"]
-        df = df.drop(["Rk", "G"], axis=1).reset_index(drop=True)
-        if not playoffs:
-            df["DATE"] = pd.to_datetime(df["DATE"])
+        df = df.drop(["Rk", "Gcar"], axis=1).reset_index(drop=True)
+        df.drop(df.index[-1], inplace=True)
+        try:
+            if not playoffs:
+                df["DATE"] = pd.to_datetime(df["DATE"])
+        except:
+            print(f"error for {suffix}")
+            df = pd.DataFrame()
         return df
     else:
         raise ConnectionError("Request to basketball reference failed")
